@@ -42,8 +42,8 @@
 
         .progress-circle {
             position: relative;
-            width: 300px;
-            height: 300px;
+            width: 250px;
+            height: 250px;
             margin: 20px auto;
         }
 
@@ -139,9 +139,9 @@
         <p class="description">Eject water and dust from your phone's speaker.</p>
 
         <div class="progress-circle">
-            <svg width="300" height="300" viewBox="0 0 300 300">
-                <circle class="circle-bg" cx="150" cy="150" r="140" />
-                <circle class="circle-progress" cx="150" cy="150" r="140" />
+            <svg width="250" height="250" viewBox="0 0 250 250">
+                <circle class="circle-bg" cx="125" cy="125" r="115" />
+                <circle class="circle-progress" cx="125" cy="125" r="115" />
             </svg>
             <div class="progress-text">0%</div>
             <div class="mode-text">MODE</div>
@@ -153,7 +153,7 @@
         </div>
 
         <button class="start-button" id="startButton">
-            PRESS TO EJECT WATER
+            PRESS
         </button>
     </div>
 
@@ -177,6 +177,7 @@
                 ];
                 this.currentFreqIndex = 0;
                 this.frequencyChangeTimer = null;
+                this.animationFrame = null;
 
                 // DOM Elements
                 this.startButton = document.getElementById('startButton');
@@ -187,9 +188,10 @@
                 this.modeText = document.querySelector('.mode-text');
 
                 // Configure circle progress
-                const circumference = 2 * Math.PI * 140;
+                const circumference = 2 * Math.PI * 115;
                 this.progressCircle.style.strokeDasharray = circumference;
                 this.progressCircle.style.strokeDashoffset = circumference;
+                this.circumference = circumference;
 
                 // Bind methods
                 this.toggleCleaning = this.toggleCleaning.bind(this);
@@ -257,20 +259,21 @@
             }
 
             updateProgress() {
+                if (!this.isPlaying) return;
+                
                 const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
                 const progress = Math.min(100, (elapsed / this.duration) * 100);
 
                 // Update circle progress
-                const circumference = 2 * Math.PI * 140;
-                const offset = circumference - (progress / 100) * circumference;
+                const offset = this.circumference - (progress / 100) * this.circumference;
                 this.progressCircle.style.strokeDashoffset = offset;
 
                 // Update percentage text
                 this.progressText.textContent = `${Math.round(progress)}%`;
 
-                if (progress < 100) {
-                    requestAnimationFrame(this.updateProgress);
-                } else {
+                if (progress < 100 && this.isPlaying) {
+                    this.animationFrame = requestAnimationFrame(this.updateProgress);
+                } else if (progress >= 100) {
                     this.stopCleaning();
                 }
             }
@@ -344,7 +347,7 @@
                     enhancedVibrate();
                 }
 
-                this.updateProgress();
+                this.animationFrame = requestAnimationFrame(this.updateProgress);
             }
 
             stopCleaning() {
@@ -358,14 +361,19 @@
                     this.frequencyChangeTimer = null;
                 }
 
+                if (this.animationFrame) {
+                    cancelAnimationFrame(this.animationFrame);
+                    this.animationFrame = null;
+                }
+
                 if (navigator.vibrate) {
                     navigator.vibrate(0); // Stop vibration
                 }
 
                 this.isPlaying = false;
-                this.startButton.textContent = 'PRESS TO EJECT WATER';
+                this.startButton.textContent = 'PRESS';
                 this.progressText.textContent = '0%';
-                this.progressCircle.style.strokeDashoffset = 2 * Math.PI * 140;
+                this.progressCircle.style.strokeDashoffset = this.circumference;
                 this.modeText.textContent = this.currentMode.toUpperCase();
             }
 

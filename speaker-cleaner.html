@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix My Speaker - Sound & Vibration Cleaner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #f0f8ff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #333;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin: 20px 0;
+            color: #1e3c72;
+        }
+
+        .description {
+            margin: 20px 0;
+            color: #666;
+        }
+
+        .progress-circle {
+            position: relative;
+            width: 300px;
+            height: 300px;
+            margin: 20px auto;
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: #eee;
+            stroke-width: 20;
+        }
+
+        .circle-progress {
+            fill: none;
+            stroke: #1e3c72;
+            stroke-width: 20;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            transition: stroke-dashoffset 0.3s;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            color: #1e3c72;
+        }
+
+        .mode-text {
+            position: absolute;
+            top: 65%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1em;
+            color: #666;
+        }
+
+        .mode-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .mode-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .mode-button.active {
+            background: #1e3c72;
+            color: white;
+        }
+
+        .mode-button:not(.active) {
+            background: #eee;
+            color: #666;
+        }
+
+        .start-button {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: none;
+            background: #1e3c72;
+            color: white;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .start-button:hover {
+            transform: scale(1.05);
+        }
+
+        .start-button:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Fix My Speaker</h1>
+        <p class="description">Eject water and dust from your phone's speaker.</p>
+
+        <div class="progress-circle">
+            <svg width="300" height="300" viewBox="0 0 300 300">
+                <circle class="circle-bg" cx="150" cy="150" r="140" />
+                <circle class="circle-progress" cx="150" cy="150" r="140" />
+            </svg>
+            <div class="progress-text">0%</div>
+            <div class="mode-text">MODE</div>
+        </div>
+
+        <div class="mode-buttons">
+            <button class="mode-button active" id="soundButton">SOUND</button>
+            <button class="mode-button" id="vibrateButton">VIBRATE</button>
+        </div>
+
+        <button class="start-button" id="startButton">
+            PRESS TO EJECT WATER
+        </button>
+    </div>
+
+    <script>
+        class SpeakerCleaner {
+            constructor() {
+                this.audioContext = null;
+                this.oscillator = null;
+                this.gainNode = null;
+                this.isPlaying = false;
+                this.startTime = 0;
+                this.duration = 45; // Extended to 45 seconds for better results
+                this.currentMode = 'sound';
+                this.vibrationPattern = [100, 50]; // vibration pattern in ms
+                this.frequencySequence = [
+                    { freq: 165, time: 10 }, // Low frequency to start
+                    { freq: 200, time: 10 }, // Medium frequency
+                    { freq: 440, time: 10 }, // Higher frequency
+                    { freq: 800, time: 5 },  // Very high frequency
+                    { freq: 165, time: 10 }  // Back to low for final push
+                ];
+                this.currentFreqIndex = 0;
+                this.frequencyChangeTimer = null;
+
+                // DOM Elements
+                this.startButton = document.getElementById('startButton');
+                this.soundButton = document.getElementById('soundButton');
+                this.vibrateButton = document.getElementById('vibrateButton');
+                this.progressCircle = document.querySelector('.circle-progress');
+                this.progressText = document.querySelector('.progress-text');
+                this.modeText = document.querySelector('.mode-text');
+
+                // Configure circle progress
+                const circumference = 2 * Math.PI * 140;
+                this.progressCircle.style.strokeDasharray = circumference;
+                this.progressCircle.style.strokeDashoffset = circumference;
+
+                // Bind methods
+                this.toggleCleaning = this.toggleCleaning.bind(this);
+                this.updateProgress = this.updateProgress.bind(this);
+                this.switchMode = this.switchMode.bind(this);
+                this.changeFrequency = this.changeFrequency.bind(this);
+
+                // Event listeners
+                this.startButton.addEventListener('click', this.toggleCleaning);
+                this.soundButton.addEventListener('click', () => this.switchMode('sound'));
+                this.vibrateButton.addEventListener('click', () => this.switchMode('vibrate'));
+            }
+
+            async initAudioContext() {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.oscillator = this.audioContext.createOscillator();
+                this.oscillator.type = 'sine';
+
+                // Start with the first frequency in the sequence
+                const initialFreq = this.frequencySequence[0].freq;
+                this.oscillator.frequency.setValueAtTime(initialFreq, this.audioContext.currentTime);
+
+                this.gainNode = this.audioContext.createGain();
+                this.gainNode.gain.setValueAtTime(0.7, this.audioContext.currentTime);
+
+                this.oscillator.connect(this.gainNode);
+                this.gainNode.connect(this.audioContext.destination);
+            }
+
+            changeFrequency() {
+                if (!this.isPlaying || !this.oscillator) return;
+
+                this.currentFreqIndex++;
+
+                if (this.currentFreqIndex < this.frequencySequence.length) {
+                    const nextFreq = this.frequencySequence[this.currentFreqIndex];
+
+                    // Gradually change to the new frequency over 500ms for smoother transition
+                    this.oscillator.frequency.linearRampToValueAtTime(
+                        nextFreq.freq,
+                        this.audioContext.currentTime + 0.5
+                    );
+
+                    // Update the mode text to show current frequency
+                    this.modeText.textContent = `${this.currentMode.toUpperCase()} - ${nextFreq.freq}Hz`;
+
+                    // Schedule the next frequency change
+                    this.frequencyChangeTimer = setTimeout(
+                        this.changeFrequency,
+                        nextFreq.time * 1000
+                    );
+                }
+            }
+
+            switchMode(mode) {
+                this.currentMode = mode;
+                this.soundButton.classList.toggle('active', mode === 'sound');
+                this.vibrateButton.classList.toggle('active', mode === 'vibrate');
+                this.modeText.textContent = mode.toUpperCase();
+
+                if (this.isPlaying) {
+                    this.stopCleaning();
+                    this.startCleaning();
+                }
+            }
+
+            updateProgress() {
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const progress = Math.min(100, (elapsed / this.duration) * 100);
+
+                // Update circle progress
+                const circumference = 2 * Math.PI * 140;
+                const offset = circumference - (progress / 100) * circumference;
+                this.progressCircle.style.strokeDashoffset = offset;
+
+                // Update percentage text
+                this.progressText.textContent = `${Math.round(progress)}%`;
+
+                if (progress < 100) {
+                    requestAnimationFrame(this.updateProgress);
+                } else {
+                    this.stopCleaning();
+                }
+            }
+
+            async startCleaning() {
+                this.isPlaying = true;
+                this.startTime = Date.now();
+                this.startButton.textContent = 'STOP';
+                this.currentFreqIndex = 0;
+
+                if (this.currentMode === 'sound') {
+                    await this.initAudioContext();
+                    this.oscillator.start();
+
+                    // Update the mode text to show current frequency
+                    this.modeText.textContent = `${this.currentMode.toUpperCase()} - ${this.frequencySequence[0].freq}Hz`;
+
+                    // Schedule frequency changes
+                    this.frequencyChangeTimer = setTimeout(
+                        this.changeFrequency,
+                        this.frequencySequence[0].time * 1000
+                    );
+                } else if (this.currentMode === 'vibrate' && navigator.vibrate) {
+                    // Enhance vibration for better water ejection
+                    const enhancedVibrate = () => {
+                        if (!this.isPlaying) return;
+
+                        // Calculate which frequency phase we're in
+                        const elapsed = (Date.now() - this.startTime) / 1000;
+                        let totalTime = 0;
+                        let currentPhase = 0;
+
+                        for (let i = 0; i < this.frequencySequence.length; i++) {
+                            totalTime += this.frequencySequence[i].time;
+                            if (elapsed <= totalTime) {
+                                currentPhase = i;
+                                break;
+                            }
+                        }
+
+                        // Adjust vibration intensity based on the current phase
+                        let intensity = 0;
+                        switch (currentPhase) {
+                            case 0:
+                                intensity = 100;
+                                break;
+                            case 1:
+                                intensity = 150;
+                                break;
+                            case 2:
+                                intensity = 200;
+                                break;
+                            case 3:
+                                intensity = 300;
+                                break;
+                            case 4:
+                                intensity = 100;
+                                break;
+                            default:
+                                intensity = 100;
+                        }
+
+                        this.modeText.textContent = `${this.currentMode.toUpperCase()} - PHASE ${currentPhase + 1}`;
+
+                        navigator.vibrate(intensity);
+                        if (this.isPlaying) {
+                            setTimeout(enhancedVibrate, 150);
+                        }
+                    };
+
+                    enhancedVibrate();
+                }
+
+                this.updateProgress();
+            }
+
+            stopCleaning() {
+                if (this.oscillator) {
+                    this.oscillator.stop();
+                    this.oscillator = null;
+                }
+
+                if (this.frequencyChangeTimer) {
+                    clearTimeout(this.frequencyChangeTimer);
+                    this.frequencyChangeTimer = null;
+                }
+
+                if (navigator.vibrate) {
+                    navigator.vibrate(0); // Stop vibration
+                }
+
+                this.isPlaying = false;
+                this.startButton.textContent = 'PRESS TO EJECT WATER';
+                this.progressText.textContent = '0%';
+                this.progressCircle.style.strokeDashoffset = 2 * Math.PI * 140;
+                this.modeText.textContent = this.currentMode.toUpperCase();
+            }
+
+            async toggleCleaning() {
+                if (this.isPlaying) {
+                    this.stopCleaning();
+                } else {
+                    await this.startCleaning();
+                }
+            }
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', () => {
+            new SpeakerCleaner();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,3 +1,4 @@
+/* Base Styles */
 * {
     margin: 0;
     padding: 0;
@@ -61,6 +62,40 @@ header.scrolled {
     color: #1e3c72;
 }
 
+/* Navigation */
+nav {
+    position: relative;
+}
+
+.hamburger {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    gap: 5px;
+    width: 30px;
+    height: 25px;
+    justify-content: space-between;
+}
+
+.hamburger span {
+    display: block;
+    height: 3px;
+    width: 100%;
+    background-color: #1e3c72;
+    transition: all 0.3s ease;
+}
+
+.close-menu-btn {
+    display: none;
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    font-size: 32px;
+    color: #1e3c72;
+    cursor: pointer;
+    z-index: 1002;
+}
+
 nav ul {
     display: flex;
     list-style: none;
@@ -100,6 +135,8 @@ main {
     background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
     margin-bottom: 20px;
     opacity: 0;
     transform: translateY(30px);
@@ -146,9 +183,11 @@ h2 {
 
 .progress-circle {
     position: relative;
-    width: 250px;
-    height: 250px;
+    width: 100%;
+    max-width: 250px;
+    height: auto;
     margin: 20px auto;
+    aspect-ratio: 1 / 1;
 }
 
 .circle-bg {
@@ -340,51 +379,199 @@ footer {
     font-size: 0.9em;
 }
 
-/* Mobile Responsive */
-@media (max-width: 768px) {
-    nav ul {
-        gap: 15px;
-    }
-
-    nav ul li a {
-        font-size: 0.9em;
-    }
-
+/* Tablet responsive styles */
+@media (max-width: 992px) {
     .hero-section h1 {
-        font-size: 2.2em;
+        font-size: 2.5em;
     }
+    
+    .step {
+        padding: 20px;
+    }
+    
+    .footer-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .progress-circle svg {
+        width: 220px;
+        height: 220px;
+    }
+    
+    .start-button {
+        width: 110px;
+        height: 110px;
+    }
+}
 
+/* Mobile responsive styles */
+@media (max-width: 768px) {
+    .hamburger {
+        display: flex;
+        z-index: 1001;
+    }
+    
+    nav ul {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 70%;
+        height: 100vh;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 40px;
+        transition: right 0.3s ease;
+        z-index: 1000;
+    }
+    
+    nav ul.active {
+        right: 0;
+        box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+    }
+    
+    nav ul li a {
+        font-size: 1.2em;
+    }
+    
+    .hero-section h1 {
+        font-size: 2em;
+    }
+    
     .hero-section p {
         font-size: 1em;
     }
-
-    .progress-circle {
-        width: 200px;
-        height: 200px;
+    
+    .progress-circle svg {
+        width: 180px;
+        height: 180px;
     }
-
+    
+    .speaker-section, 
+    .how-to-section {
+        padding: 30px 20px;
+    }
+    
     .start-button {
         width: 100px;
         height: 100px;
     }
+    
+    .steps {
+        grid-template-columns: 1fr;
+    }
 }
 
+/* Small mobile screens */
 @media (max-width: 480px) {
     .header-container {
-        flex-direction: column;
-        gap: 15px;
+        padding: 0 15px;
+    }
+    
+    .logo h2 {
+        font-size: 1.2em;
+    }
+    
+    .logo-icon {
+        width: 35px;
+        height: 35px;
+        font-size: 16px;
     }
 
-    nav ul {
-        gap: 10px;
+    .hero-section{
+        padding: 20px 20px;
     }
-
-    .speaker-section,
-    .how-to-section {
-        padding: 20px;
+    
+    .hero-section h1 {
+        font-size: 1.8em;
     }
-
+    
+    .hero-section p {
+        font-size: 0.9em;
+        margin-bottom: 1.2rem;
+    }
+    
+    h2 {
+        font-size: 1.6em;
+    }
+    
+    .progress-circle svg {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .progress-text {
+        font-size: 2.5em;
+        top: 32%;
+    }
+    
+    .mode-text {
+        font-size: 0.8em;
+    }
+    
+    .start-button {
+        width: 90px;
+        height: 90px;
+        font-size: 0.9em;
+    }
+    
     .footer-container {
         grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    
+    .mode-button {
+        padding: 8px 16px;
+        font-size: 0.9em;
+    }
+}
+
+/* For very small screens */
+@media (max-width: 320px) {
+    .hero-section{
+        padding: 20px 20px;
+    }
+
+    .progress-circle svg {
+        width: 130px;
+        height: 130px;
+    }
+    
+    .progress-text {
+        font-size: 2em;
+        top: 28%;
+    }
+    
+    .circle-bg, .circle-progress {
+        stroke-width: 15;
+    }
+    
+    .start-button {
+        width: 80px;
+        height: 80px;
+        font-size: 0.8em;
+    }
+    
+    .mode-text {
+        font-size: 0.7em;
+    }
+}
+
+/* Landscape orientation fixes */
+@media (max-height: 500px) and (orientation: landscape) {
+    nav ul {
+        padding: 80px 0;
+    }
+    
+    .progress-circle svg {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .start-button {
+        width: 80px;
+        height: 80px;
     }
 }

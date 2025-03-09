@@ -2,6 +2,59 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize GSAP
     gsap.registerPlugin(ScrollTrigger);
 
+    // Mobile Menu Toggle
+    const hamburger = document.getElementById('hamburgerMenu');
+    const navMenu = document.getElementById('navMenu');
+    const closeMenuBtn = document.createElement('div');
+    
+    // Create and add close button to mobile menu
+    closeMenuBtn.className = 'close-menu-btn';
+    closeMenuBtn.innerHTML = '&times;';
+    closeMenuBtn.style.display = 'none';
+    navMenu.prepend(closeMenuBtn);
+
+    if (hamburger) {
+        hamburger.addEventListener('click', () => {
+            navMenu.classList.add('active');
+            closeMenuBtn.style.display = 'block';
+            
+            // Animate hamburger to X
+            const spans = hamburger.querySelectorAll('span');
+            gsap.to(spans[0], { rotation: 45, y: 9, duration: 0.3 });
+            gsap.to(spans[1], { opacity: 0, duration: 0.3 });
+            gsap.to(spans[2], { rotation: -45, y: -9, duration: 0.3 });
+        });
+    }
+
+    // Close menu button functionality
+    closeMenuBtn.addEventListener('click', () => {
+        navMenu.classList.remove('active');
+        closeMenuBtn.style.display = 'none';
+        
+        // Reset hamburger icon
+        const spans = hamburger.querySelectorAll('span');
+        gsap.to(spans[0], { rotation: 0, y: 0, duration: 0.3 });
+        gsap.to(spans[1], { opacity: 1, duration: 0.3 });
+        gsap.to(spans[2], { rotation: 0, y: 0, duration: 0.3 });
+    });
+
+    // Close mobile menu when clicking on links
+    const navLinks = document.querySelectorAll('nav ul li a');
+    navLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            if (navMenu.classList.contains('active')) {
+                navMenu.classList.remove('active');
+                closeMenuBtn.style.display = 'none';
+                
+                // Reset hamburger icon
+                const spans = hamburger.querySelectorAll('span');
+                gsap.to(spans[0], { rotation: 0, y: 0, duration: 0.3 });
+                gsap.to(spans[1], { opacity: 1, duration: 0.3 });
+                gsap.to(spans[2], { rotation: 0, y: 0, duration: 0.3 });
+            }
+        });
+    });
+
     // Animate hero section
     gsap.to('.hero-section h1', {
         y: 0,
@@ -65,6 +118,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Make progress circle responsive
+    function updateProgressCircleSize() {
+        const progressCircle = document.querySelector('.progress-circle');
+        const circleProgressSVG = progressCircle.querySelector('svg');
+        const circle = progressCircle.querySelectorAll('circle');
+        const progressText = document.querySelector('.progress-text');
+
+        // Get the container width for responsive sizing
+        const containerWidth = progressCircle.parentElement.clientWidth;
+        let size = Math.min(containerWidth * 0.8, 250); // Cap at 250px max
+        
+        // Ensure minimum size on very small screens
+        size = Math.max(size, 120);
+        
+        // Update SVG size
+        circleProgressSVG.setAttribute('width', size);
+        circleProgressSVG.setAttribute('height', size);
+        circleProgressSVG.setAttribute('viewBox', `0 0 ${size} ${size}`);
+        
+        // Update circle positions and radius
+        const centerPoint = size / 2;
+        const radius = centerPoint - 10; // 10px padding
+        
+        circle.forEach(c => {
+            c.setAttribute('cx', centerPoint);
+            c.setAttribute('cy', centerPoint);
+            c.setAttribute('r', radius);
+        });
+        
+        // Update text size
+        progressText.style.fontSize = `${size/6}px`;
+        
+        // Update the circumference in the SpeakerCleaner instance
+        if (speakerCleaner) {
+            speakerCleaner.updateCircumference(2 * Math.PI * radius);
+        }
+    }
+
+    // Resize observer for progress circle
+    const resizeObserver = new ResizeObserver(updateProgressCircleSize);
+    const progressCircleContainer = document.querySelector('.progress-circle').parentElement;
+    resizeObserver.observe(progressCircleContainer);
+
     // Speaker cleaner functionality
     class SpeakerCleaner {
         constructor() {
@@ -95,17 +191,20 @@ document.addEventListener('DOMContentLoaded', () => {
             this.progressText = document.querySelector('.progress-text');
             this.modeText = document.querySelector('.mode-text');
 
+            if (!this.startButton || !this.progressCircle) {
+                console.error('Required DOM elements not found');
+                return;
+            }
+
             // Configure circle progress
-            const circumference = 2 * Math.PI * 115;
-            this.progressCircle.style.strokeDasharray = circumference;
-            this.progressCircle.style.strokeDashoffset = circumference;
-            this.circumference = circumference;
+            this.updateCircumference(2 * Math.PI * parseInt(this.progressCircle.getAttribute('r')));
 
             // Bind methods
             this.toggleCleaning = this.toggleCleaning.bind(this);
             this.updateProgress = this.updateProgress.bind(this);
             this.switchMode = this.switchMode.bind(this);
             this.changeFrequency = this.changeFrequency.bind(this);
+            this.updateCircumference = this.updateCircumference.bind(this);
 
             // Event listeners
             this.startButton.addEventListener('click', this.toggleCleaning);
@@ -113,20 +212,31 @@ document.addEventListener('DOMContentLoaded', () => {
             this.vibrateButton.addEventListener('click', () => this.switchMode('vibrate'));
         }
 
+        updateCircumference(circumference) {
+            this.circumference = circumference;
+            this.progressCircle.style.strokeDasharray = circumference;
+            this.progressCircle.style.strokeDashoffset = circumference;
+        }
+
         async initAudioContext() {
-            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            this.oscillator = this.audioContext.createOscillator();
-            this.oscillator.type = 'sine';
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                this.oscillator = this.audioContext.createOscillator();
+                this.oscillator.type = 'sine';
 
-            // Start with the first frequency in the sequence
-            const initialFreq = this.frequencySequence[0].freq;
-            this.oscillator.frequency.setValueAtTime(initialFreq, this.audioContext.currentTime);
+                // Start with the first frequency in the sequence
+                const initialFreq = this.frequencySequence[0].freq;
+                this.oscillator.frequency.setValueAtTime(initialFreq, this.audioContext.currentTime);
 
-            this.gainNode = this.audioContext.createGain();
-            this.gainNode.gain.setValueAtTime(0.7, this.audioContext.currentTime);
+                this.gainNode = this.audioContext.createGain();
+                this.gainNode.gain.setValueAtTime(0.7, this.audioContext.currentTime);
 
-            this.oscillator.connect(this.gainNode);
-            this.gainNode.connect(this.audioContext.destination);
+                this.oscillator.connect(this.gainNode);
+                this.gainNode.connect(this.audioContext.destination);
+            } catch (error) {
+                console.error('Audio context initialization failed:', error);
+                alert('Could not initialize audio. Please check your browser settings.');
+            }
         }
 
         changeFrequency() {
@@ -312,5 +422,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initialize the speaker cleaner
-    new SpeakerCleaner();
+    const speakerCleaner = new SpeakerCleaner();
+    
+    // Run initial size update
+    updateProgressCircleSize();
 });

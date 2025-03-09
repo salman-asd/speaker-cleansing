@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hamburger = document.getElementById('hamburgerMenu');
     const navMenu = document.getElementById('navMenu');
     const closeMenuBtn = document.createElement('div');
-    
+
     // Create and add close button to mobile menu
     closeMenuBtn.className = 'close-menu-btn';
     closeMenuBtn.innerHTML = '&times;';
@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hamburger.addEventListener('click', () => {
             navMenu.classList.add('active');
             closeMenuBtn.style.display = 'block';
-            
+
             // Animate hamburger to X
             const spans = hamburger.querySelectorAll('span');
             gsap.to(spans[0], { rotation: 45, y: 9, duration: 0.3 });
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     closeMenuBtn.addEventListener('click', () => {
         navMenu.classList.remove('active');
         closeMenuBtn.style.display = 'none';
-        
+
         // Reset hamburger icon
         const spans = hamburger.querySelectorAll('span');
         gsap.to(spans[0], { rotation: 0, y: 0, duration: 0.3 });
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (navMenu.classList.contains('active')) {
                 navMenu.classList.remove('active');
                 closeMenuBtn.style.display = 'none';
-                
+
                 // Reset hamburger icon
                 const spans = hamburger.querySelectorAll('span');
                 gsap.to(spans[0], { rotation: 0, y: 0, duration: 0.3 });
@@ -96,16 +96,32 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Animate steps with staggered effect
+    // gsap.from('.step', {
+    //     scrollTrigger: {
+    //         trigger: '.steps',
+    //         start: 'top 80%'
+    //     },
+    //     y: 30,
+    //     opacity: 0,
+    //     duration: 0.6,
+    //     stagger: 0.2,
+    //     ease: 'power2.out'
+    // });
+
+    // Animate steps with staggered effect - improved version
     gsap.from('.step', {
         scrollTrigger: {
             trigger: '.steps',
-            start: 'top 80%'
+            start: 'top 80%',
+            once: true,  // Make sure animation only happens once
+            toggleActions: 'play none none none' // Play animation when triggered
         },
         y: 30,
         opacity: 0,
-        duration: 0.6,
-        stagger: 0.2,
-        ease: 'power2.out'
+        duration: 0.8,  // Slightly longer duration for smoother animation
+        stagger: 0.15,  // Adjusted stagger timing
+        ease: 'power2.out',
+        clearProps: 'all' // Clear properties after animation completes
     });
 
     // Header scroll effect
@@ -128,28 +144,28 @@ document.addEventListener('DOMContentLoaded', () => {
         // Get the container width for responsive sizing
         const containerWidth = progressCircle.parentElement.clientWidth;
         let size = Math.min(containerWidth * 0.8, 250); // Cap at 250px max
-        
+
         // Ensure minimum size on very small screens
         size = Math.max(size, 120);
-        
+
         // Update SVG size
         circleProgressSVG.setAttribute('width', size);
         circleProgressSVG.setAttribute('height', size);
         circleProgressSVG.setAttribute('viewBox', `0 0 ${size} ${size}`);
-        
+
         // Update circle positions and radius
         const centerPoint = size / 2;
         const radius = centerPoint - 10; // 10px padding
-        
+
         circle.forEach(c => {
             c.setAttribute('cx', centerPoint);
             c.setAttribute('cy', centerPoint);
             c.setAttribute('r', radius);
         });
-        
+
         // Update text size
-        progressText.style.fontSize = `${size/6}px`;
-        
+        progressText.style.fontSize = `${size / 6}px`;
+
         // Update the circumference in the SpeakerCleaner instance
         if (speakerCleaner) {
             speakerCleaner.updateCircumference(2 * Math.PI * radius);
@@ -278,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateProgress() {
             if (!this.isPlaying) return;
-            
+
             const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
             const progress = Math.min(100, (elapsed / this.duration) * 100);
 
@@ -423,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize the speaker cleaner
     const speakerCleaner = new SpeakerCleaner();
-    
+
     // Run initial size update
     updateProgressCircleSize();
 });
